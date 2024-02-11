@@ -19,12 +19,13 @@ window.addEventListener('mousemove', (e) => {
 
 class User {
     constructor() {
-        this.x = undefined;
-        this.y = undefined;
-        this.prevX = undefined;
-        this.prevY = undefined;
-        this.dx = undefined;
-        this.dy = undefined;
+        this.x = width / 2; // Start at the bottom middle
+        this.y = length * 0.95; // Start at the bottom
+        this.prevX = this.x;
+        this.prevY = this.y;
+        this.dx = 0;
+        this.dy = 0;
+        this.maxY = length * 0.95; // Max y position (bottom)
     }
 
     draw() {
@@ -36,10 +37,17 @@ class User {
     }
 
     update() {
-        this.dx = this.x - this.prevX;
         this.dy = this.y - this.prevY;
         this.prevX = this.x;
         this.prevY = this.y;
+
+        // Ensure the player cannot cross the middle line
+        if (this.y < length / 2) {
+            this.y = length / 2;
+        }
+        if (this.y > this.maxY) {
+            this.y = this.maxY;
+        }
     }
 }
 
@@ -89,10 +97,85 @@ class Puck {
             }
         }
     }
+
+    
+}
+
+class CPU {
+    constructor() {
+        this.x = width / 2; // Start at the top middle
+        this.y = length * 0.05; // Start at the top
+        this.dx = 3;
+        this.dy = 3;
+        this.homePosition = { x: width / 2, y: length * 0.2 }; // Define home position
+        this.minY = length * 0.05; // Min y position (top)
+    }
+
+    draw() {
+        dimension.beginPath();
+        dimension.arc(this.x, this.y, width * 0.05, 0, 2 * Math.PI);
+        dimension.fillStyle = "yellow";
+        dimension.fill();
+        dimension.stroke();
+    }
+
+    update() {
+        if (puck.y < this.y) {
+            this.retract();
+        } else {
+            this.strike();
+            const distance = Math.sqrt((this.x - puck.x) ** 2 + (this.y - puck.y) ** 2);
+            const minDistance = puck.radius + width * 0.05;
+            if (distance < minDistance) {
+                const overlap = minDistance - distance;
+                const angle = Math.atan2(this.y - puck.y, this.x - puck.x);
+                puck.x += Math.cos(angle) * overlap;
+                puck.y += Math.sin(angle) * overlap;
+                const impactSpeed = Math.sqrt(puck.dx ** 2 + puck.dy ** 2);
+                const relativeSpeed = (this.dx - puck.dx) ** 2 + (this.dy - puck.dy) ** 2;
+                if (relativeSpeed > 2) {
+                    puck.dx += this.dx * 0.5;
+                    puck.dy += this.dy * 0.5;
+                }
+            }
+        }
+    
+        // Ensure the CPU cannot cross the middle line
+        if (this.y > length / 2) {
+            this.y = length / 2;
+        }
+        if (this.y < this.minY) {
+            this.y = this.minY;
+        }
+    }
+    
+    
+    
+
+    strike(){
+        const relativeX = puck.x - this.x
+        const relativeY = puck.y - this.y
+        const theta = Math.atan(relativeX/relativeY)
+        const vector = 10
+        this.dx = vector*Math.sin(theta)
+        this.dy = vector*Math.cos(theta)
+
+        this.x += this.dx
+        this.y += this.dy
+
+    }
+
+    retract(){
+        this.dx = 3
+        this.dy = 3
+        this.x += this.x > this.homePosition.x ? this.dx*-1 : this.dx
+        this.y += this.y > this.homePosition.y ? this.dy*-1 : this.dy
+    }
 }
 
 const player = new User();
 const puck = new Puck();
+const cpu = new CPU();
 
 function animate() {
     dimension.clearRect(0, 0, width, length);
@@ -104,6 +187,9 @@ function animate() {
 
     puck.draw();
     puck.update();
+
+    cpu.draw()
+    cpu.update()
 
     requestAnimationFrame(animate);
 }
