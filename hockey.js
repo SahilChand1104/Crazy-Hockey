@@ -4,6 +4,11 @@ const length = canvas.height = 900;
 document.body.appendChild(canvas);
 const dimension = canvas.getContext('2d');
 
+let userScore = 0;
+let cpuScore = 0;
+
+let gameOver = false;
+
 const Rink = () => {
     dimension.beginPath();
     dimension.arc(width / 2, length / 2, width / 10, 0, 2 * Math.PI);
@@ -53,11 +58,23 @@ class User {
 
 class Puck {
     constructor() {
+        this.reset();
+        this.radius = width * 0.04;
+        this.speed = 1;
+    }
+
+    reset() {
         this.x = width / 2;
         this.y = length / 2;
-        this.radius = width * 0.04;
-        this.dx = 2;
-        this.dy = 2;
+        this.dx = 0;
+        this.dy = 0;
+    }
+
+    spawnInFrontOfNet(net) {
+        this.x = width / 2;
+        this.y = net.y > length / 2 ? net.y - net.height / 2 - this.radius : net.y + net.height / 2 + this.radius;
+        this.dx = 0;
+        this.dy = 0;
     }
 
     draw() {
@@ -69,8 +86,8 @@ class Puck {
     }
 
     update() {
-        this.x += this.dx;
-        this.y += this.dy;
+        this.x += this.dx * this.speed;
+        this.y += this.dy * this.speed;
 
         if (this.x + this.radius > width || this.x - this.radius < 0) {
             this.dx *= -1;
@@ -97,8 +114,6 @@ class Puck {
             }
         }
     }
-
-    
 }
 
 class CPU {
@@ -120,7 +135,7 @@ class CPU {
     }
 
     update() {
-        if (puck.y < this.y) {
+        if (!gameOver && puck.y < this.y) {
             this.retract();
         } else {
             this.strike();
@@ -148,9 +163,6 @@ class CPU {
             this.y = this.minY;
         }
     }
-    
-    
-    
 
     strike(){
         const relativeX = puck.x - this.x
@@ -173,9 +185,92 @@ class CPU {
     }
 }
 
+class Net {
+    constructor(x, y, width, height, team) {
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+        this.team = team; // 'user' or 'cpu'
+    }
+
+    draw() {
+        dimension.fillStyle = 'black';
+        dimension.fillRect(this.x, this.y, this.width, this.height);
+    }
+
+    checkScore(puck) {
+        if (
+            puck.x - puck.radius >= this.x &&
+            puck.x + puck.radius <= this.x + this.width &&
+            puck.y + puck.radius >= this.y &&
+            puck.y - puck.radius <= this.y + this.height
+        ) {
+            if (this.team === 'user') {
+                // User scored
+                userScore++;
+                if (userScore >= 7) {
+                    gameOver = true;
+                    console.log('Game Over! User Wins!');
+                    showEndMessage("User");
+                    return;
+                }
+                console.log('User scored!');
+                puck.spawnInFrontOfNet(cpuNet);
+            } else if (this.team === 'cpu') {
+                // CPU scored
+                cpuScore++;
+                if (cpuScore >= 7) {
+                    gameOver = true;
+                    console.log('Game Over! CPU Wins!');
+                    showEndMessage("CPU");
+                    return;
+                }
+                console.log('CPU scored!');
+                puck.spawnInFrontOfNet(userNet);
+            }
+            // Reset puck position
+            // puck.reset();
+        }
+    }
+}
+
+function showEndMessage(winner) {
+    dimension.clearRect(0, 0, width, length);
+    dimension.font = "30px Arial";
+    dimension.fillStyle = "black";
+    dimension.fillText(`Game Over! ${winner} Wins!`, width / 2 - 150, length / 2 - 30);
+    dimension.fillText("Do you want to play again? (Y/N)", width / 2 - 150, length / 2 + 30);
+
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'y' || event.key === 'Y') {
+            resetGame();
+            animate();
+        } else if (event.key === 'n' || event.key === 'N') {
+            // Do nothing or show some exit message
+        }
+    });
+}
+
+function resetGame() {
+    userScore = 0;
+    cpuScore = 0;
+    gameOver = false;
+    puck.reset();
+}
+
 const player = new User();
 const puck = new Puck();
 const cpu = new CPU();
+const userNet = new Net(width / 2 - width * 0.2, 0, width * 0.4, length * 0.05, 'user');
+const cpuNet = new Net(width / 2 - width * 0.2, length - length * 0.05, width * 0.4, length * 0.05, 'cpu');
+
+function drawScore() {
+    dimension.font = "30px Arial";
+    dimension.fillStyle = "black";
+    dimension.fillText("User: " + userScore, 20, 40);
+    dimension.fillText("CPU: " + cpuScore, width - 150, 40);
+}
 
 function animate() {
     dimension.clearRect(0, 0, width, length);
@@ -188,10 +283,20 @@ function animate() {
     puck.draw();
     puck.update();
 
-    cpu.draw()
-    cpu.update()
+    cpu.draw();
+    cpu.update();
 
-    requestAnimationFrame(animate);
+    userNet.draw(); // Draw user net
+    cpuNet.draw(); // Draw CPU net
+
+    userNet.checkScore(puck);
+    cpuNet.checkScore(puck);
+
+    drawScore(); // Draw the score
+
+    if (!gameOver) {
+        requestAnimationFrame(animate);
+    }
 }
 
 animate();
