@@ -72,10 +72,13 @@ class Puck {
 
     spawnInFrontOfNet(net) {
         this.x = width / 2;
-        this.y = net.y > length / 2 ? net.y - net.height / 2 - this.radius : net.y + net.height / 2 + this.radius;
+        //this.y = net.y > length / 2 ? net.y - net.height / 2 - this.radius : net.y + net.height / 2 + this.radius;
+        this.y = length/1.25;
         this.dx = 0;
         this.dy = 0;
     }
+
+    
 
     draw() {
         dimension.beginPath();
@@ -207,7 +210,6 @@ class Net {
             puck.y - puck.radius <= this.y + this.height
         ) {
             if (this.team === 'user') {
-                // User scored
                 userScore++;
                 if (userScore >= 7) {
                     gameOver = true;
@@ -218,7 +220,6 @@ class Net {
                 console.log('User scored!');
                 puck.spawnInFrontOfNet(cpuNet);
             } else if (this.team === 'cpu') {
-                // CPU scored
                 cpuScore++;
                 if (cpuScore >= 7) {
                     gameOver = true;
@@ -227,13 +228,13 @@ class Net {
                     return;
                 }
                 console.log('CPU scored!');
-                puck.spawnInFrontOfNet(userNet);
+                puck.spawnInFrontOfNet(userNet);  
             }
-            // Reset puck position
-            // puck.reset();
         }
     }
 }
+
+
 
 function showEndMessage(winner) {
     dimension.clearRect(0, 0, width, length);
